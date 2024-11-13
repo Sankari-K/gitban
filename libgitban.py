@@ -10,6 +10,8 @@ import os
 import re
 import sys
 import zlib
+import json
+import uuid
 
 argparser = argparse.ArgumentParser(description="The stupidest content tracker and project manager")
 argsubparsers = argparser.add_subparsers(title="Commands", dest="command")
@@ -135,6 +137,8 @@ argsp.add_argument("-n",metavar="name",dest="name",help="Name of the task")
 argsp.add_argument("-d",metavar="description",dest="description",help="Description")
 argsp.add_argument("-s",metavar="status",dest="status",help="Status of the task")
 
+argsp = argsubparsers.add_parser("list-tasks", help="To create a task")
+
 
 def main(argv=sys.argv[1:]):
     args = argparser.parse_args(argv)
@@ -171,6 +175,8 @@ def main(argv=sys.argv[1:]):
         cmd_tag(args)
     elif args.command == "task":
         cmd_task(args)
+    elif args.command == "list-tasks":
+        task_list()
     else:
         print("Bad command.")
 
@@ -191,7 +197,7 @@ def validate_priority(priority):
         raise ValueError(f"Invalid priority: {priority}. Valid priorities are: {valid_priorities}")
 
 def cmd_task(args):
-    print(args)
+    create_task(args.name,args.description, args.status)
 
 def create_task(name, description, status, priority="Medium", assignee=None, due_date=None):
     """Create a JSON object for a Kanban board task with validation."""
@@ -216,21 +222,49 @@ def create_task(name, description, status, priority="Medium", assignee=None, due
         "estimatedTime": None
     }
 
-    with open("kanban.json","w") as f:
-        data = json.load(f)
+    with open(".kanban","r+") as f:
+        data = json.loads(f.read())
         data.append(task)
-        json.dump(data,f)        
+        f.seek(0)
+        json.dump(data,f,indent=6)        
 
     return task  # Return the task object directly
 
 def task_list():
-    with open("kanban.json","r") as f:
+    with open(".kanban","r+") as f:
         data=json.load(f)
+        print([task["id"] for task in data])
         return [task["id"] for task in data]
 
-def update_task_status(task_id,status):
-    with open("kanban.json","w") as f:
-        data = json.load(f)
+def update_task_status(task_id, new_status):
+    """Update the status of a task given a task ID and new status."""
+    # Validate the new status
+    validate_status(new_status)
+
+    # Load the tasks from the JSON file
+    repo = repo_find()
+    with open(".kanban","r+") as f:
+        tasks = json.load(f)
+    
+    # Find the task and update its status
+    for task in tasks:
+        if task['id'] == task_id:
+            current_status = task['status']
+            if current_status != new_status:
+                task['status'] = new_status
+                task['updatedDate'] = datetime.now().isoformat()
+                print(f"Task {task_id} status updated from '{current_status}' to '{new_status}'")
+            else:
+                print(f"Task {task_id} is already at status '{current_status}'")
+            break
+    else:
+        raise ValueError(f"No task found with ID: {task_id}")
+    
+    # Write the updated tasks back to the JSON file
+    with open(".kanban","r+") as f:
+        f.seek(0)
+        json.dump(tasks, f, indent=4)
+
 
 
 class GitRepository(object):
@@ -440,10 +474,8 @@ def repo_create(path):
         config = repo_default_config()
         config.write(f)
     
-    with open(repo_file(repo, "kanban"),"w") as f:
+    with open(path + "/.kanban","w") as f:
         json.dump([],f)
-
-    print("kanban")
 
     return repo
 
@@ -1591,14 +1623,14 @@ def commit_create(repo, tree, parent, author, timestamp, message):
     commit.kvlm[b"committer"] = author.encode("utf8")
     commit.kvlm[None] = message.encode("utf8")
 
-    task_ids = []
-    #<id> <complete>/<pending>/<start> MESSAGE 
+    task_ids = task_list()
+    #<id> <complete>/<pending> MESSAGE 
     msg_id = message.split()[0]
     msg = message.split()[1]
     for i in task_ids:
         if msg_id == i and msg=="complete":
             update_task_status(msg_id,"Done")
-        elif msg_id == i and msg=="pending":
+        elif msg_id == i and msg=="pending" :
             update_task_status(msg_id,"In Progress")
 
     return object_write(commit, repo)
