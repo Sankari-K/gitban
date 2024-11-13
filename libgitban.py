@@ -130,6 +130,12 @@ argsp.add_argument("-m",
                    dest="message",
                    help="Message to associate with this commit.")
 
+argsp = argsubparsers.add_parser("task", help="To create a task")
+argsp.add_argument("-n",metavar="name",dest="name",help="Name of the task")
+argsp.add_argument("-d",metavar="description",dest="description",help="Description")
+argsp.add_argument("-s",metavar="status",dest="status",help="Status of the task")
+
+
 def main(argv=sys.argv[1:]):
     args = argparser.parse_args(argv)
 
@@ -163,8 +169,69 @@ def main(argv=sys.argv[1:]):
         cmd_status(args)
     elif args.command == "tag":
         cmd_tag(args)
+    elif args.command == "task":
+        cmd_task(args)
     else:
         print("Bad command.")
+
+def create_id():
+    """Generate a unique identifier for the task."""
+    return str(uuid.uuid4())
+
+def validate_status(status):
+    """Validate the task status."""
+    valid_statuses = {"To Do", "In Progress", "Done"}
+    if status not in valid_statuses:
+        raise ValueError(f"Invalid status: {status}. Valid statuses are: {valid_statuses}")
+
+def validate_priority(priority):
+    """Validate the task priority."""
+    valid_priorities = {"Low", "Medium", "High"}
+    if priority not in valid_priorities:
+        raise ValueError(f"Invalid priority: {priority}. Valid priorities are: {valid_priorities}")
+
+def cmd_task(args):
+    print(args)
+
+def create_task(name, description, status, priority="Medium", assignee=None, due_date=None):
+    """Create a JSON object for a Kanban board task with validation."""
+    validate_status(status)
+    validate_priority(priority)
+
+    task = {
+        "id": create_id(),
+        "name": name,
+        "description": description,
+        "status": status,
+        "priority": priority,
+        "assignee": assignee,
+        "dueDate": due_date,
+        "createdDate": datetime.now().isoformat(),
+        "updatedDate": datetime.now().isoformat(),
+        "tags": [],
+        "comments": [],
+        "subtasks": [],
+        "attachments": [],
+        "progress": 0,
+        "estimatedTime": None
+    }
+
+    with open("kanban.json","w") as f:
+        data = json.load(f)
+        data.append(task)
+        json.dump(data,f)        
+
+    return task  # Return the task object directly
+
+def task_list():
+    with open("kanban.json","r") as f:
+        data=json.load(f)
+        return [task["id"] for task in data]
+
+def update_task_status(task_id,status):
+    with open("kanban.json","w") as f:
+        data = json.load(f)
+
 
 class GitRepository(object):
     """A git repository"""
@@ -372,6 +439,11 @@ def repo_create(path):
     with open(repo_file(repo, "config"), "w") as f:
         config = repo_default_config()
         config.write(f)
+    
+    with open(repo_file(repo, "kanban"),"w") as f:
+        json.dump([],f)
+
+    print("kanban")
 
     return repo
 
@@ -1518,6 +1590,16 @@ def commit_create(repo, tree, parent, author, timestamp, message):
     commit.kvlm[b"author"] = author.encode("utf8")
     commit.kvlm[b"committer"] = author.encode("utf8")
     commit.kvlm[None] = message.encode("utf8")
+
+    task_ids = []
+    #<id> <complete>/<pending>/<start> MESSAGE 
+    msg_id = message.split()[0]
+    msg = message.split()[1]
+    for i in task_ids:
+        if msg_id == i and msg=="complete":
+            update_task_status(msg_id,"Done")
+        elif msg_id == i and msg=="pending":
+            update_task_status(msg_id,"In Progress")
 
     return object_write(commit, repo)
 

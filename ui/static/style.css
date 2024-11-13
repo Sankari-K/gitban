@@ -1,0 +1,103 @@
+/* Base Styling */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f0f2f5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 20px;
+  color: #333;
+}
+
+h1 {
+  font-size: 2.5em;
+  color: #2d3436;
+  margin-bottom: 20px;
+  text-shadow: 1px 2px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Board Layout */
+.board {
+  display: flex;
+  width: 90%;
+  max-width: 1200px;
+  gap: 20px;
+  justify-content: center;
+}
+
+.column {
+  flex: 1;
+  background: linear-gradient(135deg, #fdfbfb, #ebedee);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.column:hover {
+  transform: scale(1.02);
+}
+
+.column h2 {
+  font-size: 1.8em;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.15);
+  border-bottom: 2px solid #dfe6e9;
+  padding-bottom: 10px;
+}
+
+/* Task Card Styling */
+.tasks .task {
+  background-color: #ffffff;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  border-left: 5px solid #0984e3;
+}
+
+.tasks .task:hover {
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+}
+
+/* Task Header */
+.task h3 {
+  margin: 0;
+  font-size: 1.3em;
+  color: #2d3436;
+}
+
+.priority {
+  font-weight: bold;
+  color: #e74c3c;
+  margin-top: 5px;
+}
+
+/* Text Styling */
+.task p {
+  color: #636e72;
+  font-size: 0.9em;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+
+/* Assignee Styling */
+.task .priority {
+  color: #e17055;
+}
+
+.task .priority.high {
+  color: #d63031;
+}
+
+.task .priority.medium {
+  color: #e67e22;
+}
+
+.task .priority.low {
+  color: #00b894;
+}
