@@ -10,6 +10,8 @@ import os
 import re
 import sys
 import zlib
+import json
+import uuid
 
 argparser = argparse.ArgumentParser(description="The stupidest content tracker and project manager")
 argsubparsers = argparser.add_subparsers(title="Commands", dest="command")
@@ -130,6 +132,14 @@ argsp.add_argument("-m",
                    dest="message",
                    help="Message to associate with this commit.")
 
+argsp = argsubparsers.add_parser("task", help="To create a task")
+argsp.add_argument("-n",metavar="name",dest="name",help="Name of the task")
+argsp.add_argument("-d",metavar="description",dest="description",help="Description")
+argsp.add_argument("-s",metavar="status",dest="status",help="Status of the task")
+
+argsp = argsubparsers.add_parser("list-tasks", help="To create a task")
+
+
 def main(argv=sys.argv[1:]):
     args = argparser.parse_args(argv)
 
@@ -163,8 +173,99 @@ def main(argv=sys.argv[1:]):
         cmd_status(args)
     elif args.command == "tag":
         cmd_tag(args)
+    elif args.command == "task":
+        cmd_task(args)
+    elif args.command == "list-tasks":
+        task_list()
     else:
         print("Bad command.")
+
+def create_id():
+    """Generate a unique identifier for the task."""
+    return str(uuid.uuid4())
+
+def validate_status(status):
+    """Validate the task status."""
+    valid_statuses = {"To Do", "In Progress", "Done"}
+    if status not in valid_statuses:
+        raise ValueError(f"Invalid status: {status}. Valid statuses are: {valid_statuses}")
+
+def validate_priority(priority):
+    """Validate the task priority."""
+    valid_priorities = {"Low", "Medium", "High"}
+    if priority not in valid_priorities:
+        raise ValueError(f"Invalid priority: {priority}. Valid priorities are: {valid_priorities}")
+
+def cmd_task(args):
+    create_task(args.name,args.description, args.status)
+
+def create_task(name, description, status, priority="Medium", assignee=None, due_date=None):
+    """Create a JSON object for a Kanban board task with validation."""
+    validate_status(status)
+    validate_priority(priority)
+
+    task = {
+        "id": create_id(),
+        "name": name,
+        "description": description,
+        "status": status,
+        "priority": priority,
+        "assignee": assignee,
+        "dueDate": due_date,
+        "createdDate": datetime.now().isoformat(),
+        "updatedDate": datetime.now().isoformat(),
+        "tags": [],
+        "comments": [],
+        "subtasks": [],
+        "attachments": [],
+        "progress": 0,
+        "estimatedTime": None
+    }
+
+    with open(".kanban","r+") as f:
+        data = json.loads(f.read())
+        data.append(task)
+        f.seek(0)
+        json.dump(data,f,indent=6)        
+
+    return task  # Return the task object directly
+
+def task_list():
+    with open(".kanban","r+") as f:
+        data=json.load(f)
+        print([task["id"] for task in data])
+        return [task["id"] for task in data]
+
+def update_task_status(task_id, new_status):
+    """Update the status of a task given a task ID and new status."""
+    # Validate the new status
+    validate_status(new_status)
+
+    # Load the tasks from the JSON file
+    repo = repo_find()
+    with open(".kanban","r+") as f:
+        tasks = json.load(f)
+    
+    # Find the task and update its status
+    for task in tasks:
+        if task['id'] == task_id:
+            current_status = task['status']
+            if current_status != new_status:
+                task['status'] = new_status
+                task['updatedDate'] = datetime.now().isoformat()
+                print(f"Task {task_id} status updated from '{current_status}' to '{new_status}'")
+            else:
+                print(f"Task {task_id} is already at status '{current_status}'")
+            break
+    else:
+        raise ValueError(f"No task found with ID: {task_id}")
+    
+    # Write the updated tasks back to the JSON file
+    with open(".kanban","r+") as f:
+        f.seek(0)
+        json.dump(tasks, f, indent=4)
+
+
 
 class GitRepository(object):
     """A git repository"""
@@ -372,6 +473,9 @@ def repo_create(path):
     with open(repo_file(repo, "config"), "w") as f:
         config = repo_default_config()
         config.write(f)
+    
+    with open(path + "/.kanban","w") as f:
+        json.dump([],f)
 
     return repo
 
@@ -1518,6 +1622,16 @@ def commit_create(repo, tree, parent, author, timestamp, message):
     commit.kvlm[b"author"] = author.encode("utf8")
     commit.kvlm[b"committer"] = author.encode("utf8")
     commit.kvlm[None] = message.encode("utf8")
+
+    task_ids = task_list()
+    #<id> <complete>/<pending> MESSAGE 
+    msg_id = message.split()[0]
+    msg = message.split()[1]
+    for i in task_ids:
+        if msg_id == i and msg=="complete":
+            update_task_status(msg_id,"Done")
+        elif msg_id == i and msg=="pending" :
+            update_task_status(msg_id,"In Progress")
 
     return object_write(commit, repo)
 
