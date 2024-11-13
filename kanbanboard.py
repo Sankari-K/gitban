@@ -166,6 +166,11 @@ class KanbanBoard:
         task_frame = tk.Frame(parent, bg="white", padx=10, pady=5, relief="solid", bd=1)
         task_frame.pack(fill="x", padx=10, pady=5)
         
+            # Task ID and name
+        task_id_label = tk.Label(task_frame, text=f"ID: {task['id']}", font=("Helvetica", 8), bg="white", fg="gray")
+        task_id_label.pack(anchor="w")
+
+
         # Task Name
         tk.Label(task_frame, text=task["name"], font=("Helvetica", 12, "bold"), bg="white").pack(anchor="w")
 
