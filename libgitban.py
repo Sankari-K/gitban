@@ -12,6 +12,15 @@ import sys
 import zlib
 import json
 import uuid
+import sys
+import tkinter as tk
+from tkinter import ttk
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import time
+import threading
+
+
 
 argparser = argparse.ArgumentParser(description="The stupidest content tracker and project manager")
 argsubparsers = argparser.add_subparsers(title="Commands", dest="command")
@@ -139,6 +148,7 @@ argsp.add_argument("-s",metavar="status",dest="status",help="Status of the task"
 
 argsp = argsubparsers.add_parser("list-tasks", help="To create a task")
 
+argsp = argsubparsers.add_parser("task-gui", help="Show task GUI")
 
 def main(argv=sys.argv[1:]):
     args = argparser.parse_args(argv)
